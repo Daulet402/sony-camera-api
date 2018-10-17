@@ -58,7 +58,7 @@ int main(int argc, char* argv[]) {
 		std::cout << "#############################" << std::endl;
 		gphoto2pp::CameraWrapper cameraWrapper; // Not passing in model and port will connect to the first available camera.
 		
-		setCanonCapture(cameraWrapper, true);
+		setCanonCapture(cameraWrapper, true); //works
 		
 		std::cout << "#############################" << std::endl;
 		std::cout << "# Capture Method 1          #" << std::endl;
@@ -74,7 +74,7 @@ int main(int argc, char* argv[]) {
 		
 		std::cout << "Taking second picture..." << std::endl << std::endl;
 		gphoto2pp::CameraFileWrapper cameraFileWrapper;
-		gphoto2pp::helper::capture(cameraWrapper, cameraFileWrapper, true);
+		gphoto2pp::helper::capture(cameraWrapper, cameraFileWrapper, true); //works
 		
 		// This is only really needed if your camera is set to take pictures in RAW.
 		// Because by default the mime type for those is 'application/unknown'
@@ -110,7 +110,7 @@ int main(int argc, char* argv[]) {
 		// Now lets take another picture but ignore all of that messing around we did above and just use 4 lines of code instead :)
 		std::cout << std::endl << "Taking third picture..." << std::endl << std::endl;
 		//cameraFileWrapper = cameraWrapper.capture();
-		gphoto2pp::helper::capture(cameraWrapper, cameraFileWrapper, true);
+		gphoto2pp::helper::capture(cameraWrapper, cameraFileWrapper, true); //works
 		cameraFileWrapper.detectMimeType();
 		cameraFileWrapper.adjustNameForMimeType();
 		cameraFileWrapper.save("example4_capture_method_1b."+cameraFileWrapper.getFileName());
@@ -120,7 +120,7 @@ int main(int argc, char* argv[]) {
 		std::cout << "#############################" << std::endl;
 		std::cout << "Taking fourth picture..." << std::endl << std::endl;
 		std::fstream f1("example4_capture_method_3.jpg",std::fstream::out|std::fstream::binary|std::fstream::trunc);
-		gphoto2pp::helper::capture(cameraWrapper,f1, true);
+		gphoto2pp::helper::capture(cameraWrapper,f1, true); //works
 		f1.close();
 		
 	}

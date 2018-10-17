@@ -44,7 +44,8 @@ endif()
 
 # base path of where binaries should be built
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
-
+message( STATUS ${PROJECT_BINARY_DIR})
+message( STATUS ${PROJECT_BINARY_DIR})
 # where the library will be built to
 set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/libs)
 
