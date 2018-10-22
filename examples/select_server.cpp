@@ -21,18 +21,20 @@
 #include <gphoto2pp/window_widget.hpp>
 #include <gphoto2pp/camera_widget_wrapper.hpp>
 #include <gphoto2pp/radio_widget.hpp>
-
+#include <boost/tokenizer.hpp>
 
 #define TRUE   1
 #define FALSE  0
 #define PORT 8889
 
 using namespace std;
+using namespace boost;
 using namespace gphoto2pp;
 
 const string ISO_CONFIG_NAME = "ISO Speed";
 const string SHUTTER_SPEED_CONFIG_NAME = "Shutter Speed";
 const string WHITEBALANCE_CONFIG_NAME = "WhiteBalance";
+const string DELIMITER = "_";
 
 vector<string> getChoices(CameraWrapper &cameraWrapper, string widgetName) {
     /**
@@ -76,41 +78,24 @@ vector<CameraWrapper> getCameraWrappers() {
     catch (const exceptions::NoCameraFoundError &e) {
         cout << "GPhoto couldn't detect any cameras connected to the computer" << endl;
         cout << "Exception Message: " << e.what() << endl;
-    } catch (exception e) {
+    } catch (std::exception e) {
         cerr << "exception " << e.what() << endl;
     }
     return {};
 }
 
-string getValue(string input) {
-    string result[2];
-// set iso 200
-// set shutter_speed *&
-    bool isStartFound = false;
-    string value;
-    int k = 0;
-    for (int i = 0; i < input.size(); i++) {
-        if (input[i] == '*') {
-            isStartFound = true;
+vector<string> getParameters(string input) {
+    vector<string> params;
+    typedef tokenizer<char_separator<char>> tokenizer;
+    char_separator<char> sep("_");
+    tokenizer tok{input, sep};
+    for (const auto &t : tok) {
+        if (t == "set") {
             continue;
         }
-
-        if (isStartFound) {
-            if (input[i] == '&') {
-                return value;
-            }
-            value += input[i];
-        }
+        params.push_back(t);
     }
-    return value;
-}
-
-string getInput(char buffer[], int actualSize) {
-    string in;
-    for (int i = 0; i < actualSize; i++) {
-        in += buffer[i];
-    }
-    return in;
+    return params;
 }
 
 int main(int argc, char *argv[]) {
@@ -218,56 +203,61 @@ int main(int argc, char *argv[]) {
                         close(sd);
                         client_socket[i] = 0;
                     } else {
-                        //set the string terminating NULL byte on the end of the data read
-                        //buffer[valread] = '\0';
-                        string input = getInput(buffer, valread);
+                        string input(buffer, buffer + valread);
                         input.replace(input.find("\r\n"), 2, "");
 
                         CameraWrapper &cameraWrapper = cameraWrappers.at(0);
                         CameraWrapper *cameraWrapper_ptr = &cameraWrapper;
                         string response;
+
                         if (input == "get_iso") {
                             future<string> iso_conf_future = async(launch::async, getRadioWidgetCurrentValueByName,
                                                                    cameraWrapper_ptr,
                                                                    ISO_CONFIG_NAME);
                             response = iso_conf_future.get();
-                        } else if (input == "get_shutter_speed") {
+                        } else if (input == "get_shutterspeed") {
                             future<string> shutter_speed_conf_future = async(launch::async,
                                                                              getRadioWidgetCurrentValueByName,
                                                                              cameraWrapper_ptr,
                                                                              SHUTTER_SPEED_CONFIG_NAME);
                             response = shutter_speed_conf_future.get();
-                        } else if (input == "get_white_balance") {
+                        } else if (input == "get_whitebalance") {
                             future<string> white_balance_conf_future = async(launch::async,
                                                                              getRadioWidgetCurrentValueByName,
                                                                              cameraWrapper_ptr,
                                                                              WHITEBALANCE_CONFIG_NAME);
                             response = white_balance_conf_future.get();
                         } else if (input.find("set") != -1) {
-                            if (input.find("iso") != -1) {
-                                string value = getValue(input);
-                                future<string>
-                                        change_conf_future = async(launch::async, setRadioWidgetValueByName,
-                                                                   cameraWrapper_ptr,
-                                                                   ISO_CONFIG_NAME, value);
-                                response = "200 ok";
-                            } else if (input.find("shutter_speed") != -1) {
-                                string value = getValue(input);
-                                future<string>
-                                        change_conf_future = async(launch::async, setRadioWidgetValueByName,
-                                                                   cameraWrapper_ptr,
-                                                                   SHUTTER_SPEED_CONFIG_NAME, value);
-                                response = "200 ok";
-                            } else if (input.find("white_balance") != -1) {
-                                string value = getValue(input);
-                                auto rootWidget = cameraWrapper.getConfig();
-                                future<string>
-                                        change_conf_future = async(launch::async, setRadioWidgetValueByName,
-                                                                   cameraWrapper_ptr,
-                                                                   WHITEBALANCE_CONFIG_NAME, value);
-                                response = "200 ok";
+                            typedef tokenizer<char_separator<char>> tokenizer;
+                            vector<string> params = getParameters(input);
+                            if (params.size() == 2) {
+                                if (params[0] == "iso") {
+                                    string value = params[1];
+                                    future<string>
+                                            change_conf_future = async(launch::async, setRadioWidgetValueByName,
+                                                                       cameraWrapper_ptr,
+                                                                       ISO_CONFIG_NAME, value);
+                                    response = "200 ok";
+                                } else if (params[0] == "shutterspeed") {
+                                    string value = params[1];
+                                    future<string>
+                                            change_conf_future = async(launch::async, setRadioWidgetValueByName,
+                                                                       cameraWrapper_ptr,
+                                                                       SHUTTER_SPEED_CONFIG_NAME, value);
+                                    response = "200 ok";
+                                } else if (params[0] == "whitebalance") {
+                                    string value = params[1];
+                                    auto rootWidget = cameraWrapper.getConfig();
+                                    future<string>
+                                            change_conf_future = async(launch::async, setRadioWidgetValueByName,
+                                                                       cameraWrapper_ptr,
+                                                                       WHITEBALANCE_CONFIG_NAME, value);
+                                    response = "200 ok";
+                                } else {
+                                    response = "ERROR_002: No settings found";
+                                }
                             } else {
-                                response = "422 error";
+                                response = "ERROR_001: Invalid command";
                             }
 
                         } else if (input == "set_white_balance") {

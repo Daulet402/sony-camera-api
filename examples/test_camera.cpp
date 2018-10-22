@@ -31,8 +31,11 @@
 
 #include <iostream>
 #include <gphoto2pp/radio_widget.hpp>
+#include <boost/tokenizer.hpp>
+
 
 using namespace std;
+using namespace boost;
 using namespace gphoto2pp;
 const string ISO_CONFIG_NAME = "ISO Speed";
 const string SHUTTER_SPEED_CONFIG_NAME = "Shutter Speed";
@@ -129,8 +132,8 @@ vector<CameraWrapper> getCameraWrappers() {
     catch (const gphoto2pp::exceptions::NoCameraFoundError &e) {
         cout << "GPhoto couldn't detect any cameras connected to the computer" << endl;
         cout << "Exception Message: " << e.what() << endl;
-    } catch (exception e) {
-        cerr << "exception " << e.what() << endl;
+    } catch (std::exception e2) {
+        cerr << "exception " << e2.what() << endl;
     }
     return {};
 }
@@ -138,12 +141,22 @@ vector<CameraWrapper> getCameraWrappers() {
 
 int main(int argc, char *argv[]) {
 
+    typedef tokenizer<char_separator<char>> tokenizer;
+    string s = "Boost C++ Libraries";
+    char_separator<char> sep{" "};
 
-    const vector<CameraWrapper> vector = getCameraWrappers();
+    tokenizer tok{s, sep};
+    for (const auto &t : tok)
+        cout << t << '\n';
+
+
+
+    /*const vector<CameraWrapper> vector = getCameraWrappers();
     for (int i = 0; i < vector.size(); i++) {
         const CameraWrapper &cameraWrapper = vector.at(i);
         //cout << getRadioWidgetCurrentValueByName(cameraWrapper, ISO_CONFIG_NAME) << endl;
-    }
+    }*/
+
     //delete vector;
 
     //cout << *addTwoNums_ptr(2, 5) << endl;
