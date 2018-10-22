@@ -31,7 +31,7 @@ if(GPHOTO2_FOUND)
 endif()
 
 if(UNIX)
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=c++11")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=c++11 -pthread")
 	if(CMAKE_BUILD_TYPE MATCHES "RELEASE")
 		set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O2")
 	elseif(CMAKE_BUILD_TYPE MATCHES "DEBUG")
@@ -44,8 +44,7 @@ endif()
 
 # base path of where binaries should be built
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
-message( STATUS ${PROJECT_BINARY_DIR})
-message( STATUS ${PROJECT_BINARY_DIR})
+
 # where the library will be built to
 set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/libs)
 

@@ -46,10 +46,10 @@ vector<string> getChoices(gphoto2pp::CameraWrapper &cameraWrapper, string widget
     return radioWidget.getChoices();
 }
 
-string getRadioWidgetCurrentValueByName(const CameraWrapper &cameraWrapper, string widgetName) {
+/*string getRadioWidgetCurrentValueByName(const CameraWrapper &cameraWrapper, string widgetName) {
     auto radioWidget = cameraWrapper.getConfig().getChildByLabel<gphoto2pp::RadioWidget>(widgetName);
     return radioWidget.getValue();
-}
+}*/
 
 void setRadioWidgetValueByName(gphoto2pp::WindowWidget &rootWidget, string widgetName, string value) {
     auto radioWidget = rootWidget.getChildByLabel<gphoto2pp::RadioWidget>(widgetName);
@@ -142,7 +142,7 @@ int main(int argc, char *argv[]) {
     const vector<CameraWrapper> vector = getCameraWrappers();
     for (int i = 0; i < vector.size(); i++) {
         const CameraWrapper &cameraWrapper = vector.at(i);
-        cout << getRadioWidgetCurrentValueByName(cameraWrapper, ISO_CONFIG_NAME) << endl;
+        //cout << getRadioWidgetCurrentValueByName(cameraWrapper, ISO_CONFIG_NAME) << endl;
     }
     //delete vector;
 

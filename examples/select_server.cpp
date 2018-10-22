@@ -12,6 +12,7 @@
 #include <sys/time.h>
 #include <iostream>
 #include <camera_methods.h>
+#include <future>
 
 #include <gphoto2pp/helper_gphoto2.hpp>
 #include <gphoto2pp/camera_list_wrapper.hpp>
@@ -27,51 +28,58 @@
 #define PORT 8889
 
 using namespace std;
+using namespace gphoto2pp;
 
 const string ISO_CONFIG_NAME = "ISO Speed";
 const string SHUTTER_SPEED_CONFIG_NAME = "Shutter Speed";
 const string WHITEBALANCE_CONFIG_NAME = "WhiteBalance";
 
-vector<string> getChoices(gphoto2pp::CameraWrapper &cameraWrapper, string widgetName) {
+vector<string> getChoices(CameraWrapper &cameraWrapper, string widgetName) {
     /**
      * available only for ISO Speed, WhiteBalance
      */
-    auto radioWidget = cameraWrapper.getConfig().getChildByLabel<gphoto2pp::RadioWidget>(widgetName);
+    auto radioWidget = cameraWrapper.getConfig().getChildByLabel<RadioWidget>(widgetName);
     return radioWidget.getChoices();
 }
 
-string getRadioWidgetCurrentValueByName(gphoto2pp::CameraWrapper &cameraWrapper, string widgetName) {
-    auto radioWidget = cameraWrapper.getConfig().getChildByLabel<gphoto2pp::RadioWidget>(widgetName);
+string getRadioWidgetCurrentValueByName(CameraWrapper *cameraWrapper, string widgetName) {
+    cout << "getRadioWidgetCurrentValueByName called " << endl;
+    auto radioWidget = cameraWrapper->getConfig().getChildByLabel<RadioWidget>(widgetName);
     return radioWidget.getValue();
 }
 
-void setRadioWidgetValueByName(gphoto2pp::WindowWidget &rootWidget, string widgetName, string value) {
-    auto radioWidget = rootWidget.getChildByLabel<gphoto2pp::RadioWidget>(widgetName);
+string setRadioWidgetValueByName(CameraWrapper *cameraWrapper, string widgetName, string value) {
+    auto rootWidget = cameraWrapper->getConfig();
+    auto radioWidget = rootWidget.getChildByLabel<RadioWidget>(widgetName);
     radioWidget.setValue(value);
+    cameraWrapper->setConfig(rootWidget);
+    return "ok";
 }
 
-void updateRootConfig(gphoto2pp::CameraWrapper &cameraWrapper, gphoto2pp::WindowWidget &rootWidget) {
+void updateRootConfig(CameraWrapper &cameraWrapper, WindowWidget &rootWidget) {
     rootWidget = cameraWrapper.getConfig();
 }
 
-vector<gphoto2pp::CameraWrapper *> getCameraWrappers() {
-    /*try {
-        auto cameraList = gphoto2pp::autoDetectAll();
+vector<CameraWrapper> getCameraWrappers() {
+    try {
+        auto cameraList = autoDetectAll();
         int count = cameraList.count();
-        vector<gphoto2pp::CameraWrapper *> cameraWrappers(count);
+        vector<CameraWrapper> cameraWrapperPtr;
         for (int i = 0; i < count; ++i) {
             string model = cameraList.getPair(i).first;
             string port = cameraList.getPair(i).second;
-            auto cameraWrapper = gphoto2pp::CameraWrapper(model, port);
-            cameraWrappers[i] = &cameraWrapper;
+            //auto cameraWrapper = CameraWrapper(model, port);
+            cameraWrapperPtr.push_back(CameraWrapper(model, port));
         }
-        return cameraWrappers;
+        return cameraWrapperPtr;
     }
-    catch (const gphoto2pp::exceptions::NoCameraFoundError &e) {
+    catch (const exceptions::NoCameraFoundError &e) {
         cout << "GPhoto couldn't detect any cameras connected to the computer" << endl;
         cout << "Exception Message: " << e.what() << endl;
-    }*/
-    return vector<gphoto2pp::CameraWrapper *>(0);
+    } catch (exception e) {
+        cerr << "exception " << e.what() << endl;
+    }
+    return {};
 }
 
 string getValue(string input) {
@@ -106,7 +114,7 @@ string getInput(char buffer[], int actualSize) {
 }
 
 int main(int argc, char *argv[]) {
-    vector<gphoto2pp::CameraWrapper *> cameraWrappers = getCameraWrappers();
+    vector<CameraWrapper> cameraWrappers = getCameraWrappers();
     int opt = TRUE;
     int master_socket, addrlen, new_socket, client_socket[30], max_clients = 30, activity, i, valread, sd;
     int max_sd;
@@ -151,128 +159,136 @@ int main(int argc, char *argv[]) {
     puts("Waiting for connections ...");
 
     try {
-        auto cameraList = gphoto2pp::autoDetectAll();
-        for (int i = 0; i < cameraList.count(); ++i) {
-            string model = cameraList.getPair(i).first;
-            string port = cameraList.getPair(i).second;
-            auto cameraWrapper = gphoto2pp::CameraWrapper(model, port);
+        while (true) {
+            FD_ZERO(&readfds);
+            FD_SET(master_socket, &readfds);
+            max_sd = master_socket;
 
+            for (i = 0; i < max_clients; i++) {
+                sd = client_socket[i];
+                if (sd > 0)
+                    FD_SET(sd, &readfds);
 
-            while (true) {
-                FD_ZERO(&readfds);
-                FD_SET(master_socket, &readfds);
-                max_sd = master_socket;
+                if (sd > max_sd)
+                    max_sd = sd;
+            }
+
+            activity = select(max_sd + 1, &readfds, NULL, NULL, NULL);
+
+            if ((activity < 0) && (errno != EINTR)) {
+                printf("select error");
+            }
+
+            if (FD_ISSET(master_socket, &readfds)) {
+                if ((new_socket = accept(master_socket, (struct sockaddr *) &address, (socklen_t *) &addrlen)) <
+                    0) {
+                    perror("accept");
+                    exit(EXIT_FAILURE);
+                }
+
+                printf("New connection , socket fd is %d , ip is : %s , port : %d \n", new_socket,
+                       inet_ntoa(address.sin_addr), ntohs(address.sin_port));
+
+                /*if (send(new_socket, message, strlen(message), 0) != strlen(message)) {
+                    perror("send");
+                }*/
+
 
                 for (i = 0; i < max_clients; i++) {
-                    sd = client_socket[i];
-                    if (sd > 0)
-                        FD_SET(sd, &readfds);
+                    if (client_socket[i] == 0) {
+                        client_socket[i] = new_socket;
+                        printf("Adding to list of sockets as %d\n", i);
 
-                    if (sd > max_sd)
-                        max_sd = sd;
-                }
-
-                activity = select(max_sd + 1, &readfds, NULL, NULL, NULL);
-
-                if ((activity < 0) && (errno != EINTR)) {
-                    printf("select error");
-                }
-
-                if (FD_ISSET(master_socket, &readfds)) {
-                    if ((new_socket = accept(master_socket, (struct sockaddr *) &address, (socklen_t *) &addrlen)) <
-                        0) {
-                        perror("accept");
-                        exit(EXIT_FAILURE);
-                    }
-
-                    printf("New connection , socket fd is %d , ip is : %s , port : %d \n", new_socket,
-                           inet_ntoa(address.sin_addr), ntohs(address.sin_port));
-
-                    /*if (send(new_socket, message, strlen(message), 0) != strlen(message)) {
-                        perror("send");
-                    }*/
-
-
-                    for (i = 0; i < max_clients; i++) {
-                        if (client_socket[i] == 0) {
-                            client_socket[i] = new_socket;
-                            printf("Adding to list of sockets as %d\n", i);
-
-                            break;
-                        }
-                    }
-                }
-
-                for (i = 0; i < max_clients; i++) {
-                    sd = client_socket[i];
-
-                    if (FD_ISSET(sd, &readfds)) {
-
-                        if ((valread = read(sd, buffer, 1024)) == 0) {
-                            getpeername(sd, (struct sockaddr *) &address, (socklen_t *) &addrlen);
-                            printf("Host disconnected , ip %s , port %d \n",
-                                   inet_ntoa(address.sin_addr),
-                                   ntohs(address.sin_port));
-
-                            close(sd);
-                            client_socket[i] = 0;
-                        } else {
-                            //set the string terminating NULL byte on the end of the data read
-                            //buffer[valread] = '\0';
-                            string input = getInput(buffer, valread);
-                            input.replace(input.find("\r\n"), 2, "");
-
-
-                            string response;
-                            if (input == "get_iso") {
-                                response = getRadioWidgetCurrentValueByName(cameraWrapper, ISO_CONFIG_NAME);
-                            } else if (input == "get_shutter_speed") {
-                                response = getRadioWidgetCurrentValueByName(cameraWrapper, SHUTTER_SPEED_CONFIG_NAME);
-                            } else if (input == "get_white_balance") {
-                                response = getRadioWidgetCurrentValueByName(cameraWrapper, WHITEBALANCE_CONFIG_NAME);
-                            } else if (input.find("set") != -1) {
-                                if (input.find("iso") != -1) {
-                                    string value = getValue(input);
-                                    auto rootWidget = cameraWrapper.getConfig();
-                                    setRadioWidgetValueByName(rootWidget, ISO_CONFIG_NAME, value);
-                                    cameraWrapper.setConfig(rootWidget);
-                                    response = "200 ok";
-                                } else if (input.find("shutter_speed") != -1) {
-                                    string value = getValue(input);
-                                    auto rootWidget = cameraWrapper.getConfig();
-                                    setRadioWidgetValueByName(rootWidget, SHUTTER_SPEED_CONFIG_NAME, value);
-                                    cameraWrapper.setConfig(rootWidget);
-                                    response = "200 ok";
-                                } else if (input.find("white_balance") != -1) {
-                                    string value = getValue(input);
-                                    auto rootWidget = cameraWrapper.getConfig();
-                                    setRadioWidgetValueByName(rootWidget, WHITEBALANCE_CONFIG_NAME, value);
-                                    cameraWrapper.setConfig(rootWidget);
-                                    response = "200 ok";
-                                } else {
-                                    response = "422 error";
-                                }
-
-                            } else if (input == "set_white_balance") {
-                                response = getRadioWidgetCurrentValueByName(cameraWrapper, WHITEBALANCE_CONFIG_NAME);
-                            } else if (input == "set_white_balance") {
-                                response = getRadioWidgetCurrentValueByName(cameraWrapper, WHITEBALANCE_CONFIG_NAME);
-                            } else {
-                                response = "Invalid command";
-                            }
-                            response += "\r\n";
-                            size_t length = response.copy(buffer, response.size(), 0);
-                            buffer[length] = '\0';
-                            send(sd, buffer, strlen(buffer), 0);
-                        }
-
-
+                        break;
                     }
                 }
             }
 
+            for (i = 0; i < max_clients; i++) {
+                sd = client_socket[i];
+
+                if (FD_ISSET(sd, &readfds)) {
+
+                    if ((valread = read(sd, buffer, 1024)) == 0) {
+                        getpeername(sd, (struct sockaddr *) &address, (socklen_t *) &addrlen);
+                        printf("Host disconnected , ip %s , port %d \n",
+                               inet_ntoa(address.sin_addr),
+                               ntohs(address.sin_port));
+
+                        close(sd);
+                        client_socket[i] = 0;
+                    } else {
+                        //set the string terminating NULL byte on the end of the data read
+                        //buffer[valread] = '\0';
+                        string input = getInput(buffer, valread);
+                        input.replace(input.find("\r\n"), 2, "");
+
+                        CameraWrapper &cameraWrapper = cameraWrappers.at(0);
+                        CameraWrapper *cameraWrapper_ptr = &cameraWrapper;
+                        string response;
+                        if (input == "get_iso") {
+                            future<string> iso_conf_future = async(launch::async, getRadioWidgetCurrentValueByName,
+                                                                   cameraWrapper_ptr,
+                                                                   ISO_CONFIG_NAME);
+                            response = iso_conf_future.get();
+                        } else if (input == "get_shutter_speed") {
+                            future<string> shutter_speed_conf_future = async(launch::async,
+                                                                             getRadioWidgetCurrentValueByName,
+                                                                             cameraWrapper_ptr,
+                                                                             SHUTTER_SPEED_CONFIG_NAME);
+                            response = shutter_speed_conf_future.get();
+                        } else if (input == "get_white_balance") {
+                            future<string> white_balance_conf_future = async(launch::async,
+                                                                             getRadioWidgetCurrentValueByName,
+                                                                             cameraWrapper_ptr,
+                                                                             WHITEBALANCE_CONFIG_NAME);
+                            response = white_balance_conf_future.get();
+                        } else if (input.find("set") != -1) {
+                            if (input.find("iso") != -1) {
+                                string value = getValue(input);
+                                future<string>
+                                        change_conf_future = async(launch::async, setRadioWidgetValueByName,
+                                                                   cameraWrapper_ptr,
+                                                                   ISO_CONFIG_NAME, value);
+                                response = "200 ok";
+                            } else if (input.find("shutter_speed") != -1) {
+                                string value = getValue(input);
+                                future<string>
+                                        change_conf_future = async(launch::async, setRadioWidgetValueByName,
+                                                                   cameraWrapper_ptr,
+                                                                   SHUTTER_SPEED_CONFIG_NAME, value);
+                                response = "200 ok";
+                            } else if (input.find("white_balance") != -1) {
+                                string value = getValue(input);
+                                auto rootWidget = cameraWrapper.getConfig();
+                                future<string>
+                                        change_conf_future = async(launch::async, setRadioWidgetValueByName,
+                                                                   cameraWrapper_ptr,
+                                                                   WHITEBALANCE_CONFIG_NAME, value);
+                                response = "200 ok";
+                            } else {
+                                response = "422 error";
+                            }
+
+                        } else if (input == "set_white_balance") {
+                            //  response = getRadioWidgetCurrentValueByName(cameraWrapper, WHITEBALANCE_CONFIG_NAME);
+                        } else if (input == "set_white_balance") {
+                            // response = getRadioWidgetCurrentValueByName(cameraWrapper, WHITEBALANCE_CONFIG_NAME);
+                        } else {
+                            response = "Invalid command";
+                        }
+                        cameraWrapper_ptr = nullptr;
+                        response += "\r\n";
+                        size_t length = response.copy(buffer, response.size(), 0);
+                        buffer[length] = '\0';
+                        send(sd, buffer, strlen(buffer), 0);
+                    }
+
+
+                }
+            }
         }
-    } catch (const gphoto2pp::exceptions::NoCameraFoundError &e) {
+    } catch (const exceptions::NoCameraFoundError &e) {
         cout << "GPhoto couldn't detect any cameras connected to the computer" << endl;
         cout << "Exception Message: " << e.what() << endl;
         return -1;
