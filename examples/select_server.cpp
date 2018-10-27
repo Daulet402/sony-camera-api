@@ -22,6 +22,7 @@
 #include <gphoto2pp/camera_widget_wrapper.hpp>
 #include <gphoto2pp/radio_widget.hpp>
 #include <boost/tokenizer.hpp>
+#include <boost/algorithm/string.hpp>
 
 #define TRUE   1
 #define FALSE  0
@@ -93,6 +94,18 @@ vector<string> getParameters(string input) {
         if (t == "set") {
             continue;
         }
+        params.push_back(t);
+    }
+    return params;
+}
+
+vector<string> get_model_and_port(string input, string replace_str) {
+    replace_first(input, replace_str, "");
+    typedef tokenizer<char_separator<char>> tokenizer;
+    char_separator<char> sep("&");
+    tokenizer tok{input, sep};
+    vector<string> params;
+    for (const auto &t : tok) {
         params.push_back(t);
     }
     return params;
@@ -210,7 +223,81 @@ int main(int argc, char *argv[]) {
                         CameraWrapper *cameraWrapper_ptr = &cameraWrapper;
                         string response;
 
-                        if (input == "get_iso") {
+                        if (input == "get_all_cameras") {
+                            for (CameraWrapper &wrapper :cameraWrappers) {
+                                response += wrapper.getModel() + "&" + wrapper.getPort() + "&0;";
+                            }
+                            response = "ok_" + response.substr(0, response.size() - 1);
+                        } else if (input.find("getisovalues_") != -1) {
+                            vector<string> model_and_port = get_model_and_port(input, "getisovalues_");
+                            for (CameraWrapper &wrapper :cameraWrappers) {
+                                if (model_and_port.size() == 2 && wrapper.getModel() == model_and_port[0]
+                                    && wrapper.getPort() == model_and_port[1]) {
+                                    vector<string> choices = getChoices(wrapper, ISO_CONFIG_NAME);
+                                    response = boost::algorithm::join(choices, "&");
+                                    break;
+                                }
+                            }
+                            if (response != "") {
+                                response = "ok_" + response;
+                            } else {
+                                response = "error_empty response";
+                            }
+                        } else if (input.find("getwhitebalancevalues_") != -1) {
+                            vector<string> model_and_port = get_model_and_port(input, "getwhitebalancevalues_");
+                            for (CameraWrapper &wrapper :cameraWrappers) {
+                                if (model_and_port.size() == 2 && wrapper.getModel() == model_and_port[0]
+                                    && wrapper.getPort() == model_and_port[1]) {
+                                    vector<string> choices = getChoices(wrapper, WHITEBALANCE_CONFIG_NAME);
+                                    response = boost::algorithm::join(choices, "&");
+                                    break;
+                                }
+                            }
+                            if (response != "") {
+                                response = "ok_" + response;
+                            } else {
+                                response = "error_empty response";
+                            }
+                        } else if (input.find("getsettings_") != -1) {
+                            vector<string> model_and_port = get_model_and_port(input, "getsettings_");
+                            for (CameraWrapper &wrapper :cameraWrappers) {
+                                if (model_and_port.size() == 2 && wrapper.getModel() == model_and_port[0]
+                                    && wrapper.getPort() == model_and_port[1]) {
+
+                                    future<string> iso_conf_future = async(launch::async,
+                                                                           getRadioWidgetCurrentValueByName,
+                                                                           cameraWrapper_ptr,
+                                                                           ISO_CONFIG_NAME);
+
+                                    future<string> shutter_speed_conf_future = async(launch::async,
+                                                                                     getRadioWidgetCurrentValueByName,
+                                                                                     cameraWrapper_ptr,
+                                                                                     SHUTTER_SPEED_CONFIG_NAME);
+
+                                    future<string> white_balance_conf_future = async(launch::async,
+                                                                                     getRadioWidgetCurrentValueByName,
+                                                                                     cameraWrapper_ptr,
+                                                                                     WHITEBALANCE_CONFIG_NAME);
+
+
+                                    response = "iso&" + iso_conf_future.get() + ";"
+                                               + "shutterspeed&" + shutter_speed_conf_future.get() + ";"
+                                               + "whitebalance&" + white_balance_conf_future.get() + ";"
+                                               + "focal&" + ";"
+                                               + "whitebalancecelvin&" + ";"
+                                               + "recordingstatus&" + ";"
+                                               + "memorystatus&" + ";";
+
+                                    if (response != "") {
+                                        response = "ok_" + response;
+                                    } else {
+                                        response = "error_empty response";
+                                    }
+                                    break;
+                                }
+                            }
+
+                        } else if (input == "get_iso") {
                             future<string> iso_conf_future = async(launch::async, getRadioWidgetCurrentValueByName,
                                                                    cameraWrapper_ptr,
                                                                    ISO_CONFIG_NAME);
