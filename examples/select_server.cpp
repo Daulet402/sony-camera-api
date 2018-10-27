@@ -21,6 +21,9 @@
 #include <gphoto2pp/window_widget.hpp>
 #include <gphoto2pp/camera_widget_wrapper.hpp>
 #include <gphoto2pp/radio_widget.hpp>
+#include <gphoto2pp/camera_capture_type_wrapper.hpp>
+#include <gphoto2pp/helper_camera_wrapper.hpp>
+#include <gphoto2pp/camera_file_wrapper.hpp>
 #include <boost/tokenizer.hpp>
 #include <boost/algorithm/string.hpp>
 
@@ -43,6 +46,16 @@ vector<string> getChoices(CameraWrapper &cameraWrapper, string widgetName) {
      */
     auto radioWidget = cameraWrapper.getConfig().getChildByLabel<RadioWidget>(widgetName);
     return radioWidget.getChoices();
+}
+
+string capture(CameraWrapper *cameraWrapper, CameraCaptureTypeWrapper cameraCaptureTypeWrapper) {
+    try {
+        CameraFileWrapper cameraFileWrapper;
+        helper::capture(*cameraWrapper, cameraFileWrapper, true, cameraCaptureTypeWrapper);
+        return "ok";
+    } catch (std::exception e) {
+        return e.what();
+    }
 }
 
 string getRadioWidgetCurrentValueByName(CameraWrapper *cameraWrapper, string widgetName) {
@@ -239,7 +252,11 @@ int main(int argc, char *argv[]) {
                             for (CameraWrapper &wrapper :cameraWrappers) {
                                 response += wrapper.getModel() + "&" + wrapper.getPort() + "&0;";
                             }
-                            response = "ok_" + response.substr(0, response.size() - 1);
+                            if (response != "") {
+                                response = "ok_" + response.substr(0, response.size() - 1);
+                            } else {
+                                response = "error_empty response";
+                            }
                         } else if (input.find("getisovalues_") != -1) {
                             vector<string> model_and_port = get_key_and_value(input, "getisovalues_");
                             for (CameraWrapper &wrapper :cameraWrappers) {
@@ -354,6 +371,33 @@ int main(int argc, char *argv[]) {
                             }
 
                             response = "ok";
+                        } else if (input.find("capture_") != -1) {
+                            vector<string> models_and_ports = get_all_params(input, "capture_");
+                            for (int i = 0; i < models_and_ports.size(); i++) {
+                                vector<string> model_and_port = get_key_and_value(models_and_ports[i], "");
+                                if (model_and_port.size() == 2) {
+                                    string model = model_and_port[0];
+                                    string port = model_and_port[1];
+
+                                    for (CameraWrapper &wrapper :cameraWrappers) {
+                                        if (wrapper.getModel() == model && wrapper.getPort() == port) {
+                                            CameraWrapper *wrapper_ptr = &cameraWrapper;
+                                            future<string> capture_future = async(launch::async, capture, wrapper_ptr,
+                                                                                  CameraCaptureTypeWrapper::Image);
+                                            response += model + "&" + port + "&" + capture_future.get() + ";";
+                                            wrapper_ptr = nullptr;
+                                            break;
+                                        }
+                                    }
+
+                                }
+                            }
+                            if (response != "") {
+                                response = response.substr(0, response.size() - 1);
+                            } else {
+                                response = "error_empty response";
+                            }
+
                         } else if (input == "get_iso") {
                             future<string> iso_conf_future = async(launch::async, getRadioWidgetCurrentValueByName,
                                                                    cameraWrapper_ptr,
