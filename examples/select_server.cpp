@@ -99,10 +99,22 @@ vector<string> getParameters(string input) {
     return params;
 }
 
-vector<string> get_model_and_port(string input, string replace_str) {
+vector<string> get_key_and_value(string input, string replace_str) {
     replace_first(input, replace_str, "");
     typedef tokenizer<char_separator<char>> tokenizer;
     char_separator<char> sep("&");
+    tokenizer tok{input, sep};
+    vector<string> params;
+    for (const auto &t : tok) {
+        params.push_back(t);
+    }
+    return params;
+}
+
+vector<string> get_all_params(string input, string replace_str) {
+    replace_first(input, replace_str, "");
+    typedef tokenizer<char_separator<char>> tokenizer;
+    char_separator<char> sep("_");
     tokenizer tok{input, sep};
     vector<string> params;
     for (const auto &t : tok) {
@@ -229,7 +241,7 @@ int main(int argc, char *argv[]) {
                             }
                             response = "ok_" + response.substr(0, response.size() - 1);
                         } else if (input.find("getisovalues_") != -1) {
-                            vector<string> model_and_port = get_model_and_port(input, "getisovalues_");
+                            vector<string> model_and_port = get_key_and_value(input, "getisovalues_");
                             for (CameraWrapper &wrapper :cameraWrappers) {
                                 if (model_and_port.size() == 2 && wrapper.getModel() == model_and_port[0]
                                     && wrapper.getPort() == model_and_port[1]) {
@@ -244,7 +256,7 @@ int main(int argc, char *argv[]) {
                                 response = "error_empty response";
                             }
                         } else if (input.find("getwhitebalancevalues_") != -1) {
-                            vector<string> model_and_port = get_model_and_port(input, "getwhitebalancevalues_");
+                            vector<string> model_and_port = get_key_and_value(input, "getwhitebalancevalues_");
                             for (CameraWrapper &wrapper :cameraWrappers) {
                                 if (model_and_port.size() == 2 && wrapper.getModel() == model_and_port[0]
                                     && wrapper.getPort() == model_and_port[1]) {
@@ -259,7 +271,7 @@ int main(int argc, char *argv[]) {
                                 response = "error_empty response";
                             }
                         } else if (input.find("getsettings_") != -1) {
-                            vector<string> model_and_port = get_model_and_port(input, "getsettings_");
+                            vector<string> model_and_port = get_key_and_value(input, "getsettings_");
                             for (CameraWrapper &wrapper :cameraWrappers) {
                                 if (model_and_port.size() == 2 && wrapper.getModel() == model_and_port[0]
                                     && wrapper.getPort() == model_and_port[1]) {
@@ -297,6 +309,51 @@ int main(int argc, char *argv[]) {
                                 }
                             }
 
+                        } else if (input.find("set_") != -1) {
+                            vector<string> all_params = get_all_params(input, "set_");
+                            vector<string> model_and_port = get_key_and_value(all_params[0], "");
+                            cout << "model = " << model_and_port[0] << " port = " << model_and_port[1] << endl;
+
+                            for (CameraWrapper &wrapper :cameraWrappers) {
+                                if (model_and_port.size() == 2 && wrapper.getModel() == model_and_port[0]
+                                    && wrapper.getPort() == model_and_port[1]) {
+
+                                    CameraWrapper *wrapper_ptr = &cameraWrapper;
+                                    for (int i = 1; i < all_params.size(); i++) {
+                                        vector<string> key_and_value = get_key_and_value(all_params[i], "");
+                                        if (key_and_value.size() == 2) {
+                                            string key = key_and_value[0];
+                                            string value = key_and_value[1];
+
+                                            if (key == "iso") {
+                                                future<string>
+                                                        change_conf_future = async(launch::async,
+                                                                                   setRadioWidgetValueByName,
+                                                                                   wrapper_ptr,
+                                                                                   ISO_CONFIG_NAME, value);
+
+                                            } else if (key == "shutterspeed") {
+                                                future<string>
+                                                        change_conf_future = async(launch::async,
+                                                                                   setRadioWidgetValueByName,
+                                                                                   wrapper_ptr,
+                                                                                   SHUTTER_SPEED_CONFIG_NAME, value);
+
+                                            } else if (key == "whitebalance") {
+                                                future<string>
+                                                        change_conf_future = async(launch::async,
+                                                                                   setRadioWidgetValueByName,
+                                                                                   wrapper_ptr,
+                                                                                   WHITEBALANCE_CONFIG_NAME, value);
+                                            }
+                                        }
+                                    }
+                                    wrapper_ptr = nullptr;
+                                    break;
+                                }
+                            }
+
+                            response = "ok";
                         } else if (input == "get_iso") {
                             future<string> iso_conf_future = async(launch::async, getRadioWidgetCurrentValueByName,
                                                                    cameraWrapper_ptr,
