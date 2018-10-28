@@ -253,9 +253,9 @@ int main(int argc, char *argv[]) {
                                 response += wrapper.getModel() + "&" + wrapper.getPort() + "&0;";
                             }
                             if (response != "") {
-                                response = "ok_" + response.substr(0, response.size() - 1);
+                                response = "1_ok_" + response.substr(0, response.size() - 1);
                             } else {
-                                response = "error_empty response";
+                                response = "1_error_empty response";
                             }
                         } else if (input.find("getisovalues_") != -1) {
                             vector<string> model_and_port = get_key_and_value(input, "getisovalues_");
@@ -268,9 +268,9 @@ int main(int argc, char *argv[]) {
                                 }
                             }
                             if (response != "") {
-                                response = "ok_" + response;
+                                response = "2_ok_" + response;
                             } else {
-                                response = "error_empty response";
+                                response = "2_error_empty response";
                             }
                         } else if (input.find("getwhitebalancevalues_") != -1) {
                             vector<string> model_and_port = get_key_and_value(input, "getwhitebalancevalues_");
@@ -283,9 +283,9 @@ int main(int argc, char *argv[]) {
                                 }
                             }
                             if (response != "") {
-                                response = "ok_" + response;
+                                response = "8_ok_" + response;
                             } else {
-                                response = "error_empty response";
+                                response = "8_error_empty response";
                             }
                         } else if (input.find("getsettings_") != -1) {
                             vector<string> model_and_port = get_key_and_value(input, "getsettings_");
@@ -318,9 +318,9 @@ int main(int argc, char *argv[]) {
                                                + "memorystatus&" + ";";
 
                                     if (response != "") {
-                                        response = "ok_" + response;
+                                        response = "3_ok_" + response;
                                     } else {
-                                        response = "error_empty response";
+                                        response = "3_error_empty response";
                                     }
                                     break;
                                 }
@@ -370,7 +370,7 @@ int main(int argc, char *argv[]) {
                                 }
                             }
 
-                            response = "ok";
+                            response = "4_ok";
                         } else if (input.find("capture_") != -1) {
                             vector<string> models_and_ports = get_all_params(input, "capture_");
                             for (int i = 0; i < models_and_ports.size(); i++) {
@@ -393,9 +393,67 @@ int main(int argc, char *argv[]) {
                                 }
                             }
                             if (response != "") {
-                                response = response.substr(0, response.size() - 1);
+                                response = "7_ok_" + response.substr(0, response.size() - 1);
+                            } else {
+                                response = "7_error_empty response";
+                            }
+
+                        } else if (input.find("startrecording_") != -1) {
+                            vector<string> models_and_ports = get_all_params(input, "startrecording_");
+                            for (int i = 0; i < models_and_ports.size(); i++) {
+                                vector<string> model_and_port = get_key_and_value(models_and_ports[i], "");
+                                if (model_and_port.size() == 2) {
+                                    string model = model_and_port[0];
+                                    string port = model_and_port[1];
+
+                                    for (CameraWrapper &wrapper :cameraWrappers) {
+                                        if (wrapper.getModel() == model && wrapper.getPort() == port) {
+                                            CameraWrapper *wrapper_ptr = &cameraWrapper;
+                                            /*
+                                            future<string> capture_future = async(launch::async, capture, wrapper_ptr,
+                                                                                  CameraCaptureTypeWrapper::Movie);
+                                            response += model + "&" + port + "&" + capture_future.get() + ";";
+                                            */
+                                            wrapper_ptr = nullptr;
+                                            break;
+                                        }
+                                    }
+
+                                }
+                            }
+                            if (response != "") {
+                                response = "5_ok_" + response.substr(0, response.size() - 1);
                             } else {
                                 response = "error_empty response";
+                            }
+
+                        } else if (input.find("stoprecording_") != -1) {
+                            vector<string> models_and_ports = get_all_params(input, "stoprecording_");
+                            for (int i = 0; i < models_and_ports.size(); i++) {
+                                vector<string> model_and_port = get_key_and_value(models_and_ports[i], "");
+                                if (model_and_port.size() == 2) {
+                                    string model = model_and_port[0];
+                                    string port = model_and_port[1];
+
+                                    for (CameraWrapper &wrapper :cameraWrappers) {
+                                        if (wrapper.getModel() == model && wrapper.getPort() == port) {
+                                            CameraWrapper *wrapper_ptr = &cameraWrapper;
+                                            /*
+                                            future<string> capture_future = async(launch::async, capture, wrapper_ptr,
+                                                                                  CameraCaptureTypeWrapper::Movie);
+                                            response += model + "&" + port + "&" + capture_future.get() + ";";
+                                            */
+                                            wrapper_ptr = nullptr;
+                                            break;
+                                        }
+                                    }
+
+                                }
+                            }
+                            if (response != "") {
+                                response = "6_ok_" + response.substr(0, response.size() - 1);
+                            } else {
+                                response = "6_error_empty response";
                             }
 
                         } else if (input == "get_iso") {

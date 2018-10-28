@@ -28,7 +28,10 @@
 #include <gphoto2pp/camera_wrapper.hpp>
 #include <gphoto2pp/window_widget.hpp>
 #include <gphoto2pp/camera_widget_wrapper.hpp>
-
+#include <gphoto2pp/camera_capture_type_wrapper.hpp>
+#include <gphoto2pp/helper_camera_wrapper.hpp>
+#include <gphoto2pp/camera_file_wrapper.hpp>
+#include <gphoto2pp/camera_file_path_wrapper.hpp>
 #include <iostream>
 #include <gphoto2pp/radio_widget.hpp>
 #include <boost/tokenizer.hpp>
@@ -118,7 +121,7 @@ int addTwoNums(int a, int b) {
 
 vector<CameraWrapper> getCameraWrappers() {
     try {
-        auto cameraList = gphoto2pp::autoDetectAll();
+        auto cameraList = autoDetectAll();
         int count = cameraList.count();
         vector<CameraWrapper> cameraWrapperPtr;
         for (int i = 0; i < count; ++i) {
@@ -129,29 +132,40 @@ vector<CameraWrapper> getCameraWrappers() {
         }
         return cameraWrapperPtr;
     }
-    catch (const gphoto2pp::exceptions::NoCameraFoundError &e) {
+    catch (const exceptions::NoCameraFoundError &e) {
         cout << "GPhoto couldn't detect any cameras connected to the computer" << endl;
         cout << "Exception Message: " << e.what() << endl;
-    } catch (std::exception e2) {
-        cerr << "exception " << e2.what() << endl;
+    } catch (std::exception e) {
+        cerr << "exception " << e.what() << endl;
     }
     return {};
 }
 
+void capture(CameraWrapper &cameraWrapper, std::string const &outputFilename, bool autoDeleteImageFromSrc /* = false */,
+             CameraCaptureTypeWrapper const &captureType /* = Image */,
+             CameraFileTypeWrapper const &fileType /* = Normal */) {
+    auto cameraFilePath = cameraWrapper.capture(captureType);
+
+    auto cameraFile = cameraWrapper.fileGet(cameraFilePath.Folder, cameraFilePath.Name, fileType);
+
+    cameraFile.save(outputFilename);
+
+    if (autoDeleteImageFromSrc) {
+        cameraWrapper.fileDelete(cameraFilePath.Folder, cameraFilePath.Name);
+    }
+}
 
 int main(int argc, char *argv[]) {
 
-    typedef tokenizer<char_separator<char>> tokenizer;
-    string s = "Boost C++ Libraries";
-    char_separator<char> sep{" "};
 
-    tokenizer tok{s, sep};
-    for (const auto &t : tok)
-        cout << t << '\n';
+    vector<CameraWrapper> cameraWrappers = getCameraWrappers();
+    CameraWrapper &cameraWrapper = cameraWrappers.at(0);
+    CameraWrapper *cameraWrapper_ptr = &cameraWrapper;
 
+    cameraWrapper.capture(CameraCaptureTypeWrapper::Sound);
 
 
-    /*const vector<CameraWrapper> vector = getCameraWrappers();
+    /*
     for (int i = 0; i < vector.size(); i++) {
         const CameraWrapper &cameraWrapper = vector.at(i);
         //cout << getRadioWidgetCurrentValueByName(cameraWrapper, ISO_CONFIG_NAME) << endl;
