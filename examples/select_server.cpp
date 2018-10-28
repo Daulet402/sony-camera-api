@@ -53,18 +53,21 @@ string capture(CameraWrapper *cameraWrapper, CameraCaptureTypeWrapper cameraCapt
         CameraFileWrapper cameraFileWrapper;
         helper::capture(*cameraWrapper, cameraFileWrapper, true, cameraCaptureTypeWrapper);
         return "ok";
-    } catch (std::exception e) {
+    } catch (std::exception &e) {
         return e.what();
     }
 }
 
 string getRadioWidgetCurrentValueByName(CameraWrapper *cameraWrapper, string widgetName) {
-    cout << "getRadioWidgetCurrentValueByName called " << endl;
+    cout << "getRadioWidgetCurrentValueByName " << cameraWrapper->getModel() << " " << cameraWrapper->getPort()
+         << " " << widgetName << endl;
     auto radioWidget = cameraWrapper->getConfig().getChildByLabel<RadioWidget>(widgetName);
     return radioWidget.getValue();
 }
 
 string setRadioWidgetValueByName(CameraWrapper *cameraWrapper, string widgetName, string value) {
+    cout << "setRadioWidgetValueByName " << cameraWrapper->getModel() << " " << cameraWrapper->getPort() << " "
+         << widgetName << " " << value << endl;
     auto rootWidget = cameraWrapper->getConfig();
     auto radioWidget = rootWidget.getChildByLabel<RadioWidget>(widgetName);
     radioWidget.setValue(value);
@@ -242,7 +245,14 @@ int main(int argc, char *argv[]) {
                         client_socket[i] = 0;
                     } else {
                         string input(buffer, buffer + valread);
-                        input.replace(input.find("\r\n"), 2, "");
+                        cout << "input = " << input << endl;
+                        if (input != "" && input.find("\r") != -1) {
+                            input.replace(input.find("\r"), 1, "");
+                        }
+                        if (input != "" && input.find("\n") != -1) {
+                            input.replace(input.find("\n"), 1, "");
+                        }
+                        //input.replace(input.find("\r\n"), 2, "");
 
                         CameraWrapper &cameraWrapper = cameraWrappers.at(0);
                         CameraWrapper *cameraWrapper_ptr = &cameraWrapper;
@@ -315,7 +325,9 @@ int main(int argc, char *argv[]) {
                                                + "focal&" + ";"
                                                + "whitebalancecelvin&" + ";"
                                                + "recordingstatus&" + ";"
-                                               + "memorystatus&" + ";";
+                                               + "memorystatus&" + ";"
+                                               + "model&" + model_and_port[0] + ";"
+                                               + "port&" + model_and_port[1];
 
                                     if (response != "") {
                                         response = "3_ok_" + response;
@@ -392,10 +404,10 @@ int main(int argc, char *argv[]) {
 
                                 }
                             }
-                            if (response != "") {
+                            if (response != "" && response.find("failed") == -1) {
                                 response = "7_ok_" + response.substr(0, response.size() - 1);
                             } else {
-                                response = "7_error_empty response";
+                                response = "7_error_" + response;
                             }
 
                         } else if (input.find("startrecording_") != -1) {
@@ -409,11 +421,9 @@ int main(int argc, char *argv[]) {
                                     for (CameraWrapper &wrapper :cameraWrappers) {
                                         if (wrapper.getModel() == model && wrapper.getPort() == port) {
                                             CameraWrapper *wrapper_ptr = &cameraWrapper;
-                                            /*
                                             future<string> capture_future = async(launch::async, capture, wrapper_ptr,
                                                                                   CameraCaptureTypeWrapper::Movie);
                                             response += model + "&" + port + "&" + capture_future.get() + ";";
-                                            */
                                             wrapper_ptr = nullptr;
                                             break;
                                         }
@@ -421,10 +431,10 @@ int main(int argc, char *argv[]) {
 
                                 }
                             }
-                            if (response != "") {
+                            if (response != "" && response.find("failed") == -1) {
                                 response = "5_ok_" + response.substr(0, response.size() - 1);
                             } else {
-                                response = "error_empty response";
+                                response = "5_error_" + response;
                             }
 
                         } else if (input.find("stoprecording_") != -1) {
