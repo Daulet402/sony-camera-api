@@ -253,275 +253,291 @@ int main(int argc, char *argv[]) {
                             input.replace(input.find("\n"), 1, "");
                         }
                         //input.replace(input.find("\r\n"), 2, "");
-
-                        CameraWrapper &cameraWrapper = cameraWrappers.at(0);
-                        CameraWrapper *cameraWrapper_ptr = &cameraWrapper;
                         string response;
+                        CameraWrapper *cameraWrapper_ptr;
+                        try {
+                            if (cameraWrappers.size() > 0) {
+                                CameraWrapper &cameraWrapper = cameraWrappers.at(0);
+                                cameraWrapper_ptr = &cameraWrapper;
 
-                        if (input == "get_all_cameras") {
-                            for (CameraWrapper &wrapper :cameraWrappers) {
-                                response += wrapper.getModel() + "&" + wrapper.getPort() + "&0;";
-                            }
-                            if (response != "") {
-                                response = "1_ok_" + response.substr(0, response.size() - 1);
-                            } else {
-                                response = "1_error_empty response";
-                            }
-                        } else if (input.find("getisovalues_") != -1) {
-                            vector<string> model_and_port = get_key_and_value(input, "getisovalues_");
-                            for (CameraWrapper &wrapper :cameraWrappers) {
-                                if (model_and_port.size() == 2 && wrapper.getModel() == model_and_port[0]
-                                    && wrapper.getPort() == model_and_port[1]) {
-                                    vector<string> choices = getChoices(wrapper, ISO_CONFIG_NAME);
-                                    response = boost::algorithm::join(choices, "&");
-                                    break;
-                                }
-                            }
-                            if (response != "") {
-                                response = "2_ok_" + response;
-                            } else {
-                                response = "2_error_empty response";
-                            }
-                        } else if (input.find("getwhitebalancevalues_") != -1) {
-                            vector<string> model_and_port = get_key_and_value(input, "getwhitebalancevalues_");
-                            for (CameraWrapper &wrapper :cameraWrappers) {
-                                if (model_and_port.size() == 2 && wrapper.getModel() == model_and_port[0]
-                                    && wrapper.getPort() == model_and_port[1]) {
-                                    vector<string> choices = getChoices(wrapper, WHITEBALANCE_CONFIG_NAME);
-                                    response = boost::algorithm::join(choices, "&");
-                                    break;
-                                }
-                            }
-                            if (response != "") {
-                                response = "8_ok_" + response;
-                            } else {
-                                response = "8_error_empty response";
-                            }
-                        } else if (input.find("getsettings_") != -1) {
-                            vector<string> model_and_port = get_key_and_value(input, "getsettings_");
-                            for (CameraWrapper &wrapper :cameraWrappers) {
-                                if (model_and_port.size() == 2 && wrapper.getModel() == model_and_port[0]
-                                    && wrapper.getPort() == model_and_port[1]) {
+                                if (input == "get_all_cameras") {
+                                    for (CameraWrapper &wrapper :cameraWrappers) {
+                                        response += wrapper.getModel() + "&" + wrapper.getPort() + "&0;";
+                                    }
+                                    if (response != "") {
+                                        response = "1_ok_" + response.substr(0, response.size() - 1);
+                                    } else {
+                                        response = "1_error_empty response";
+                                    }
+                                } else if (input.find("getisovalues_") != -1) {
+                                    vector<string> model_and_port = get_key_and_value(input, "getisovalues_");
+                                    for (CameraWrapper &wrapper :cameraWrappers) {
+                                        if (model_and_port.size() == 2 && wrapper.getModel() == model_and_port[0]
+                                            && wrapper.getPort() == model_and_port[1]) {
+                                            vector<string> choices = getChoices(wrapper, ISO_CONFIG_NAME);
+                                            response = boost::algorithm::join(choices, "&");
+                                            break;
+                                        }
+                                    }
+                                    if (response != "") {
+                                        response = "2_ok_" + response;
+                                    } else {
+                                        response = "2_error_empty response";
+                                    }
+                                } else if (input.find("getwhitebalancevalues_") != -1) {
+                                    vector<string> model_and_port = get_key_and_value(input, "getwhitebalancevalues_");
+                                    for (CameraWrapper &wrapper :cameraWrappers) {
+                                        if (model_and_port.size() == 2 && wrapper.getModel() == model_and_port[0]
+                                            && wrapper.getPort() == model_and_port[1]) {
+                                            vector<string> choices = getChoices(wrapper, WHITEBALANCE_CONFIG_NAME);
+                                            response = boost::algorithm::join(choices, "&");
+                                            break;
+                                        }
+                                    }
+                                    if (response != "") {
+                                        response = "8_ok_" + response;
+                                    } else {
+                                        response = "8_error_empty response";
+                                    }
+                                } else if (input.find("getsettings_") != -1) {
+                                    vector<string> model_and_port = get_key_and_value(input, "getsettings_");
+                                    for (CameraWrapper &wrapper :cameraWrappers) {
+                                        if (model_and_port.size() == 2 && wrapper.getModel() == model_and_port[0]
+                                            && wrapper.getPort() == model_and_port[1]) {
 
+                                            future<string> iso_conf_future = async(launch::async,
+                                                                                   getRadioWidgetCurrentValueByName,
+                                                                                   cameraWrapper_ptr,
+                                                                                   ISO_CONFIG_NAME);
+
+                                            future<string> shutter_speed_conf_future = async(launch::async,
+                                                                                             getRadioWidgetCurrentValueByName,
+                                                                                             cameraWrapper_ptr,
+                                                                                             SHUTTER_SPEED_CONFIG_NAME);
+
+                                            future<string> white_balance_conf_future = async(launch::async,
+                                                                                             getRadioWidgetCurrentValueByName,
+                                                                                             cameraWrapper_ptr,
+                                                                                             WHITEBALANCE_CONFIG_NAME);
+
+
+                                            response = "iso&" + iso_conf_future.get() + ";"
+                                                       + "shutterspeed&" + shutter_speed_conf_future.get() + ";"
+                                                       + "whitebalance&" + white_balance_conf_future.get() + ";"
+                                                       + "focal&" + ";"
+                                                       + "whitebalancecelvin&" + ";"
+                                                       + "recordingstatus&" + ";"
+                                                       + "memorystatus&" + ";"
+                                                       + "model&" + model_and_port[0] + ";"
+                                                       + "port&" + model_and_port[1];
+
+                                            if (response != "") {
+                                                response = "3_ok_" + response;
+                                            } else {
+                                                response = "3_error_empty response";
+                                            }
+                                            break;
+                                        }
+                                    }
+
+                                } else if (input.find("set_") != -1) {
+                                    vector<string> all_params = get_all_params(input, "set_");
+                                    vector<string> model_and_port = get_key_and_value(all_params[0], "");
+                                    cout << "model = " << model_and_port[0] << " port = " << model_and_port[1] << endl;
+
+                                    for (CameraWrapper &wrapper :cameraWrappers) {
+                                        if (model_and_port.size() == 2 && wrapper.getModel() == model_and_port[0]
+                                            && wrapper.getPort() == model_and_port[1]) {
+
+                                            CameraWrapper *wrapper_ptr = &cameraWrapper;
+                                            for (int i = 1; i < all_params.size(); i++) {
+                                                vector<string> key_and_value = get_key_and_value(all_params[i], "");
+                                                if (key_and_value.size() == 2) {
+                                                    string key = key_and_value[0];
+                                                    string value = key_and_value[1];
+
+                                                    if (key == "iso") {
+                                                        future<string>
+                                                                change_conf_future = async(launch::async,
+                                                                                           setRadioWidgetValueByName,
+                                                                                           wrapper_ptr,
+                                                                                           ISO_CONFIG_NAME, value);
+
+                                                    } else if (key == "shutterspeed") {
+                                                        future<string>
+                                                                change_conf_future = async(launch::async,
+                                                                                           setRadioWidgetValueByName,
+                                                                                           wrapper_ptr,
+                                                                                           SHUTTER_SPEED_CONFIG_NAME,
+                                                                                           value);
+
+                                                    } else if (key == "whitebalance") {
+                                                        future<string>
+                                                                change_conf_future = async(launch::async,
+                                                                                           setRadioWidgetValueByName,
+                                                                                           wrapper_ptr,
+                                                                                           WHITEBALANCE_CONFIG_NAME,
+                                                                                           value);
+                                                    }
+                                                }
+                                            }
+                                            wrapper_ptr = nullptr;
+                                            break;
+                                        }
+                                    }
+
+                                    response = "4_ok";
+                                } else if (input.find("capture_") != -1) {
+                                    vector<string> models_and_ports = get_all_params(input, "capture_");
+                                    for (int i = 0; i < models_and_ports.size(); i++) {
+                                        vector<string> model_and_port = get_key_and_value(models_and_ports[i], "");
+                                        if (model_and_port.size() == 2) {
+                                            string model = model_and_port[0];
+                                            string port = model_and_port[1];
+
+                                            for (CameraWrapper &wrapper :cameraWrappers) {
+                                                if (wrapper.getModel() == model && wrapper.getPort() == port) {
+                                                    CameraWrapper *wrapper_ptr = &cameraWrapper;
+                                                    future<string> capture_future = async(launch::async, capture,
+                                                                                          wrapper_ptr,
+                                                                                          CameraCaptureTypeWrapper::Image);
+                                                    response += model + "&" + port + "&" + capture_future.get() + ";";
+                                                    wrapper_ptr = nullptr;
+                                                    break;
+                                                }
+                                            }
+
+                                        }
+                                    }
+                                    if (response != "" && response.find("failed") == -1) {
+                                        response = "7_ok_" + response.substr(0, response.size() - 1);
+                                    } else {
+                                        response = "7_error_" + response;
+                                    }
+
+                                } else if (input.find("startrecording_") != -1) {
+                                    vector<string> models_and_ports = get_all_params(input, "startrecording_");
+                                    for (int i = 0; i < models_and_ports.size(); i++) {
+                                        vector<string> model_and_port = get_key_and_value(models_and_ports[i], "");
+                                        if (model_and_port.size() == 2) {
+                                            string model = model_and_port[0];
+                                            string port = model_and_port[1];
+
+                                            for (CameraWrapper &wrapper :cameraWrappers) {
+                                                if (wrapper.getModel() == model && wrapper.getPort() == port) {
+                                                    CameraWrapper *wrapper_ptr = &cameraWrapper;
+                                                    future<string> capture_future = async(launch::async, capture,
+                                                                                          wrapper_ptr,
+                                                                                          CameraCaptureTypeWrapper::Movie);
+                                                    response += model + "&" + port + "&" + capture_future.get() + ";";
+                                                    wrapper_ptr = nullptr;
+                                                    break;
+                                                }
+                                            }
+
+                                        }
+                                    }
+                                    if (response != "" && response.find("failed") == -1) {
+                                        response = "5_ok_" + response.substr(0, response.size() - 1);
+                                    } else {
+                                        response = "5_error_" + response;
+                                    }
+
+                                } else if (input.find("stoprecording_") != -1) {
+                                    vector<string> models_and_ports = get_all_params(input, "stoprecording_");
+                                    for (int i = 0; i < models_and_ports.size(); i++) {
+                                        vector<string> model_and_port = get_key_and_value(models_and_ports[i], "");
+                                        if (model_and_port.size() == 2) {
+                                            string model = model_and_port[0];
+                                            string port = model_and_port[1];
+
+                                            for (CameraWrapper &wrapper :cameraWrappers) {
+                                                if (wrapper.getModel() == model && wrapper.getPort() == port) {
+                                                    CameraWrapper *wrapper_ptr = &cameraWrapper;
+                                                    /*
+                                                    future<string> capture_future = async(launch::async, capture, wrapper_ptr,
+                                                                                          CameraCaptureTypeWrapper::Movie);
+                                                    response += model + "&" + port + "&" + capture_future.get() + ";";
+                                                    */
+                                                    wrapper_ptr = nullptr;
+                                                    break;
+                                                }
+                                            }
+
+                                        }
+                                    }
+                                    if (response != "") {
+                                        response = "6_ok_" + response.substr(0, response.size() - 1);
+                                    } else {
+                                        response = "6_error_empty response";
+                                    }
+
+                                } else if (input == "get_iso") {
                                     future<string> iso_conf_future = async(launch::async,
                                                                            getRadioWidgetCurrentValueByName,
                                                                            cameraWrapper_ptr,
                                                                            ISO_CONFIG_NAME);
-
+                                    response = iso_conf_future.get();
+                                } else if (input == "get_shutterspeed") {
                                     future<string> shutter_speed_conf_future = async(launch::async,
                                                                                      getRadioWidgetCurrentValueByName,
                                                                                      cameraWrapper_ptr,
                                                                                      SHUTTER_SPEED_CONFIG_NAME);
-
+                                    response = shutter_speed_conf_future.get();
+                                } else if (input == "get_whitebalance") {
                                     future<string> white_balance_conf_future = async(launch::async,
                                                                                      getRadioWidgetCurrentValueByName,
                                                                                      cameraWrapper_ptr,
                                                                                      WHITEBALANCE_CONFIG_NAME);
-
-
-                                    response = "iso&" + iso_conf_future.get() + ";"
-                                               + "shutterspeed&" + shutter_speed_conf_future.get() + ";"
-                                               + "whitebalance&" + white_balance_conf_future.get() + ";"
-                                               + "focal&" + ";"
-                                               + "whitebalancecelvin&" + ";"
-                                               + "recordingstatus&" + ";"
-                                               + "memorystatus&" + ";"
-                                               + "model&" + model_and_port[0] + ";"
-                                               + "port&" + model_and_port[1];
-
-                                    if (response != "") {
-                                        response = "3_ok_" + response;
+                                    response = white_balance_conf_future.get();
+                                } else if (input.find("set") != -1) {
+                                    typedef tokenizer<char_separator<char>> tokenizer;
+                                    vector<string> params = getParameters(input);
+                                    if (params.size() == 2) {
+                                        if (params[0] == "iso") {
+                                            string value = params[1];
+                                            future<string>
+                                                    change_conf_future = async(launch::async, setRadioWidgetValueByName,
+                                                                               cameraWrapper_ptr,
+                                                                               ISO_CONFIG_NAME, value);
+                                            response = "200 ok";
+                                        } else if (params[0] == "shutterspeed") {
+                                            string value = params[1];
+                                            future<string>
+                                                    change_conf_future = async(launch::async, setRadioWidgetValueByName,
+                                                                               cameraWrapper_ptr,
+                                                                               SHUTTER_SPEED_CONFIG_NAME, value);
+                                            response = "200 ok";
+                                        } else if (params[0] == "whitebalance") {
+                                            string value = params[1];
+                                            auto rootWidget = cameraWrapper.getConfig();
+                                            future<string>
+                                                    change_conf_future = async(launch::async, setRadioWidgetValueByName,
+                                                                               cameraWrapper_ptr,
+                                                                               WHITEBALANCE_CONFIG_NAME, value);
+                                            response = "200 ok";
+                                        } else {
+                                            response = "ERROR_002: No settings found";
+                                        }
                                     } else {
-                                        response = "3_error_empty response";
-                                    }
-                                    break;
-                                }
-                            }
-
-                        } else if (input.find("set_") != -1) {
-                            vector<string> all_params = get_all_params(input, "set_");
-                            vector<string> model_and_port = get_key_and_value(all_params[0], "");
-                            cout << "model = " << model_and_port[0] << " port = " << model_and_port[1] << endl;
-
-                            for (CameraWrapper &wrapper :cameraWrappers) {
-                                if (model_and_port.size() == 2 && wrapper.getModel() == model_and_port[0]
-                                    && wrapper.getPort() == model_and_port[1]) {
-
-                                    CameraWrapper *wrapper_ptr = &cameraWrapper;
-                                    for (int i = 1; i < all_params.size(); i++) {
-                                        vector<string> key_and_value = get_key_and_value(all_params[i], "");
-                                        if (key_and_value.size() == 2) {
-                                            string key = key_and_value[0];
-                                            string value = key_and_value[1];
-
-                                            if (key == "iso") {
-                                                future<string>
-                                                        change_conf_future = async(launch::async,
-                                                                                   setRadioWidgetValueByName,
-                                                                                   wrapper_ptr,
-                                                                                   ISO_CONFIG_NAME, value);
-
-                                            } else if (key == "shutterspeed") {
-                                                future<string>
-                                                        change_conf_future = async(launch::async,
-                                                                                   setRadioWidgetValueByName,
-                                                                                   wrapper_ptr,
-                                                                                   SHUTTER_SPEED_CONFIG_NAME, value);
-
-                                            } else if (key == "whitebalance") {
-                                                future<string>
-                                                        change_conf_future = async(launch::async,
-                                                                                   setRadioWidgetValueByName,
-                                                                                   wrapper_ptr,
-                                                                                   WHITEBALANCE_CONFIG_NAME, value);
-                                            }
-                                        }
-                                    }
-                                    wrapper_ptr = nullptr;
-                                    break;
-                                }
-                            }
-
-                            response = "4_ok";
-                        } else if (input.find("capture_") != -1) {
-                            vector<string> models_and_ports = get_all_params(input, "capture_");
-                            for (int i = 0; i < models_and_ports.size(); i++) {
-                                vector<string> model_and_port = get_key_and_value(models_and_ports[i], "");
-                                if (model_and_port.size() == 2) {
-                                    string model = model_and_port[0];
-                                    string port = model_and_port[1];
-
-                                    for (CameraWrapper &wrapper :cameraWrappers) {
-                                        if (wrapper.getModel() == model && wrapper.getPort() == port) {
-                                            CameraWrapper *wrapper_ptr = &cameraWrapper;
-                                            future<string> capture_future = async(launch::async, capture, wrapper_ptr,
-                                                                                  CameraCaptureTypeWrapper::Image);
-                                            response += model + "&" + port + "&" + capture_future.get() + ";";
-                                            wrapper_ptr = nullptr;
-                                            break;
-                                        }
+                                        response = "ERROR_001: Invalid command";
                                     }
 
-                                }
-                            }
-                            if (response != "" && response.find("failed") == -1) {
-                                response = "7_ok_" + response.substr(0, response.size() - 1);
-                            } else {
-                                response = "7_error_" + response;
-                            }
-
-                        } else if (input.find("startrecording_") != -1) {
-                            vector<string> models_and_ports = get_all_params(input, "startrecording_");
-                            for (int i = 0; i < models_and_ports.size(); i++) {
-                                vector<string> model_and_port = get_key_and_value(models_and_ports[i], "");
-                                if (model_and_port.size() == 2) {
-                                    string model = model_and_port[0];
-                                    string port = model_and_port[1];
-
-                                    for (CameraWrapper &wrapper :cameraWrappers) {
-                                        if (wrapper.getModel() == model && wrapper.getPort() == port) {
-                                            CameraWrapper *wrapper_ptr = &cameraWrapper;
-                                            future<string> capture_future = async(launch::async, capture, wrapper_ptr,
-                                                                                  CameraCaptureTypeWrapper::Movie);
-                                            response += model + "&" + port + "&" + capture_future.get() + ";";
-                                            wrapper_ptr = nullptr;
-                                            break;
-                                        }
-                                    }
-
-                                }
-                            }
-                            if (response != "" && response.find("failed") == -1) {
-                                response = "5_ok_" + response.substr(0, response.size() - 1);
-                            } else {
-                                response = "5_error_" + response;
-                            }
-
-                        } else if (input.find("stoprecording_") != -1) {
-                            vector<string> models_and_ports = get_all_params(input, "stoprecording_");
-                            for (int i = 0; i < models_and_ports.size(); i++) {
-                                vector<string> model_and_port = get_key_and_value(models_and_ports[i], "");
-                                if (model_and_port.size() == 2) {
-                                    string model = model_and_port[0];
-                                    string port = model_and_port[1];
-
-                                    for (CameraWrapper &wrapper :cameraWrappers) {
-                                        if (wrapper.getModel() == model && wrapper.getPort() == port) {
-                                            CameraWrapper *wrapper_ptr = &cameraWrapper;
-                                            /*
-                                            future<string> capture_future = async(launch::async, capture, wrapper_ptr,
-                                                                                  CameraCaptureTypeWrapper::Movie);
-                                            response += model + "&" + port + "&" + capture_future.get() + ";";
-                                            */
-                                            wrapper_ptr = nullptr;
-                                            break;
-                                        }
-                                    }
-
-                                }
-                            }
-                            if (response != "") {
-                                response = "6_ok_" + response.substr(0, response.size() - 1);
-                            } else {
-                                response = "6_error_empty response";
-                            }
-
-                        } else if (input == "get_iso") {
-                            future<string> iso_conf_future = async(launch::async, getRadioWidgetCurrentValueByName,
-                                                                   cameraWrapper_ptr,
-                                                                   ISO_CONFIG_NAME);
-                            response = iso_conf_future.get();
-                        } else if (input == "get_shutterspeed") {
-                            future<string> shutter_speed_conf_future = async(launch::async,
-                                                                             getRadioWidgetCurrentValueByName,
-                                                                             cameraWrapper_ptr,
-                                                                             SHUTTER_SPEED_CONFIG_NAME);
-                            response = shutter_speed_conf_future.get();
-                        } else if (input == "get_whitebalance") {
-                            future<string> white_balance_conf_future = async(launch::async,
-                                                                             getRadioWidgetCurrentValueByName,
-                                                                             cameraWrapper_ptr,
-                                                                             WHITEBALANCE_CONFIG_NAME);
-                            response = white_balance_conf_future.get();
-                        } else if (input.find("set") != -1) {
-                            typedef tokenizer<char_separator<char>> tokenizer;
-                            vector<string> params = getParameters(input);
-                            if (params.size() == 2) {
-                                if (params[0] == "iso") {
-                                    string value = params[1];
-                                    future<string>
-                                            change_conf_future = async(launch::async, setRadioWidgetValueByName,
-                                                                       cameraWrapper_ptr,
-                                                                       ISO_CONFIG_NAME, value);
-                                    response = "200 ok";
-                                } else if (params[0] == "shutterspeed") {
-                                    string value = params[1];
-                                    future<string>
-                                            change_conf_future = async(launch::async, setRadioWidgetValueByName,
-                                                                       cameraWrapper_ptr,
-                                                                       SHUTTER_SPEED_CONFIG_NAME, value);
-                                    response = "200 ok";
-                                } else if (params[0] == "whitebalance") {
-                                    string value = params[1];
-                                    auto rootWidget = cameraWrapper.getConfig();
-                                    future<string>
-                                            change_conf_future = async(launch::async, setRadioWidgetValueByName,
-                                                                       cameraWrapper_ptr,
-                                                                       WHITEBALANCE_CONFIG_NAME, value);
-                                    response = "200 ok";
+                                } else if (input == "set_white_balance") {
+                                    //  response = getRadioWidgetCurrentValueByName(cameraWrapper, WHITEBALANCE_CONFIG_NAME);
+                                } else if (input == "set_white_balance") {
+                                    // response = getRadioWidgetCurrentValueByName(cameraWrapper, WHITEBALANCE_CONFIG_NAME);
                                 } else {
-                                    response = "ERROR_002: No settings found";
+                                    response = "Invalid command";
                                 }
                             } else {
-                                response = "ERROR_001: Invalid command";
+                                response = "No camera detected";
+                                cerr << response << endl;
                             }
-
-                        } else if (input == "set_white_balance") {
-                            //  response = getRadioWidgetCurrentValueByName(cameraWrapper, WHITEBALANCE_CONFIG_NAME);
-                        } else if (input == "set_white_balance") {
-                            // response = getRadioWidgetCurrentValueByName(cameraWrapper, WHITEBALANCE_CONFIG_NAME);
-                        } else {
-                            response = "Invalid command";
+                        } catch (std::exception general_exception) {
+                            string err_msg = general_exception.what();
+                            response = "General exception occured " + err_msg;
+                            cerr << err_msg << endl;
                         }
                         cameraWrapper_ptr = nullptr;
                         response += "\r\n";
